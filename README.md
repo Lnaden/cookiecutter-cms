@@ -201,7 +201,22 @@ package managers, Huzzah!
 * [Conda's Package Management docs](https://conda.io/docs/user-guide/tasks/manage-pkgs.html)
 * [`pip` User Guide](https://pip.pypa.io/en/stable/user_guide/)
 
+## Conda Build vs. Conda Environments
 
+We recommend creating Conda environments rather than relying on conda build for *testing* purposes, assuming you have 
+opted for Conda as a dependency manager. Earlier versions of this Cookiecutter would conduct testing with by first 
+bundling the package for distribution through 
+[Conda Build](https://conda.io/docs/user-guide/tasks/build-packages/index.html), and then installing the package 
+locally to execute tests on. This had the advantage of ensuring your package *could* be bundled for distribution and 
+that all of its dependencies resolved correctly. However, it had the disadvantage of being painfully slow and rather
+confusing to debug should things go wrong on the build, even before the testing. 
+
+The replacement option to this is to pre-create the conda environment and then install your package into it with 
+no dependency resolution for testing. This helps separate out the concepts of **testing** and **deployment** which 
+are separate actions, even though deployment should only come after testing. This should simply and accelerate 
+the testing process, but 
+does mean maintaining two, albeit similar, files since a Conda Environment file has a different YAML syntax than 
+a Conda Build  `meta.yaml` file. We feel this benefits outweigh the costs and have adopted this model.
 
 ## Output Skeleton
 
@@ -225,10 +240,14 @@ upon setup.
 │   └── _version.py                 <- Automatic version control with Versioneer
 ├── devtools                        <- Deployment, packaging, and CI helpers directory 
 │   ├── README.md
+│   ├── conda-envs                  <- Environments for testing
+│   │   └── test_env.yaml
 │   ├── conda-recipe                <- Conda build and deployment skeleton
 │   │   ├── bld.bat                 <- Win specific file, not present if Win CI not chosen
 │   │   ├── build.sh
 │   │   └── meta.yaml
+│   ├── scripts
+│   │   └── create_conda_env.py     <- OS anostic Helper script to make conda environments based on simple flags
 │   └── travis-ci
 │       └── install.sh
 ├── docs                            <- Documentation template folder with many settings already filled in
