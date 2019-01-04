@@ -34,6 +34,7 @@ install:
 
     # Try to update conda first to avoid odd dependency clashes
   - conda update --all
+  - conda install pyyaml
 
     # Create test environment for package
   - python devtools\\scripts\\create_conda_env.py -n=test -p=%PYTHON_VERSION% devtools\\conda-envs\\test_env.yaml

@@ -35,7 +35,7 @@ source ~/.bashrc  # source file to get new commands
 conda config --add channels conda-forge
     {% endif %}
 conda config --set always_yes yes
-conda install conda conda-build jinja2 anaconda-client
+conda install conda conda-build jinja2 anaconda-client pyyaml
 conda update --quiet --all
 {% elif cookiecutter.dependency_source == 'Dependencies from pip only (no conda)' %}
 if [ "$TRAVIS_OS_NAME" == "osx" ]; then
