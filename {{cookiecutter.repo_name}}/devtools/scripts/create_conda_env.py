@@ -1,9 +1,49 @@
 import argparse
 import os
 import re
+import glob
 import shutil
 import subprocess as sp
-from tempfile import NamedTemporaryFile
+from tempfile import TemporaryDirectory
+from contextlib import contextmanager
+# YAML imports
+try:
+    import yaml  # PyYAML
+    loader = yaml.load
+except ImportError:
+    try:
+        import ruamel_yaml as yaml  # Ruamel YAML
+    except ImportError:
+        try:
+            # Load Ruamel YAML from the base conda environment
+            from importlib import util as import_util
+            CONDA_BIN = os.path.dirname(os.environ['CONDA_EXE'])
+            ruamel_yaml_path = glob.glob(os.path.join(CONDA_BIN, '..',
+                                                      'lib', 'python*.*', 'site-packages',
+                                                      'ruamel_yaml', '__init__.py'))[0]
+            # Based on importlib example, but only needs to load_module since its the whole package, not just
+            # a module
+            spec = import_util.spec_from_file_location('ruamel_yaml', ruamel_yaml_path)
+            yaml = spec.loader.load_module()
+        except (KeyError, ImportError, IndexError):
+            raise ImportError("No YAML parser could be found in this or the conda environment. "
+                              "Could not find PyYAML or Ruamel YAML in the current environment, "
+                              "AND could not find Ruamel YAML in the base conda environment through CONDA_EXE path. " 
+                              "Environment not created!")
+    loader = yaml.YAML(typ="safe").load  # typ="safe" avoids odd typing on output
+
+
+@contextmanager
+def temp_cd():
+    """Temporary CD Helper"""
+    cwd = os.getcwd()
+    with TemporaryDirectory() as td:
+        try:
+            os.chdir(td)
+            yield
+        finally:
+            os.chdir(cwd)
+
 
 # Args
 parser = argparse.ArgumentParser(description='Creates a conda environment from file for a given Python version.')
@@ -18,61 +58,21 @@ args = parser.parse_args()
 
 # Open the base file
 with open(args.conda_file, "r") as handle:
-    script = handle.read()
+    yaml_script = loader(handle.read())
 
-# Make changes based on the options (not relying on YAML)
-# Determine whitespace level of first non-commented line
+python_replacement_string = "python {}*".format(args.python)
+
 try:
-    whitespace = re.search('^[\r\n]*?([ \t\f]*)[^\#\s]', script, re.MULTILINE).group(1)
-except AttributeError:
-    raise RuntimeError("The input Conda Environment File is either all comments or not YAML formatted. "
-                       "Please check your file")
-# Python
-python_replacement_string = "- python {}*".format(args.python)
-dep_entry = re.search('^{}dependencies:'.format(whitespace), script, re.MULTILINE)
-if not dep_entry:
-    # Case of no dependencies entry
-    script += '\n{ws}dependencies:\n{ws} {py}'.format(ws=whitespace, py=python_replacement_string)
-else:
-    # Calculate the end of the dependencies
-    try:
-        dep_span = re.search('^[\r\n]*{}[^\#\s-]'.format(whitespace), script[dep_entry.end():], re.MULTILINE).start()
-    except AttributeError:
-        dep_span = None
-    # Calculate whitespace of dependencies
-    dep_whitespace_re = re.search('^[\r\n]*?{}([ \t\f]*)-'.format(whitespace),
-                                  script[dep_entry.end():dep_span],
-                                  re.MULTILINE)
-    if dep_whitespace_re is None:
-        # Dependencies entry, but no values
-        dep_block = '\n{ws} {py}\n'.format(ws=whitespace, py=python_replacement_string)
-    else:
-        dep_block = script[dep_entry.end():dep_span]
-        dep_whitespace = dep_whitespace_re.group(1)
-        if not re.search('^[\r\n]*?{}{}-[ \t]*python'.format(whitespace, dep_whitespace), dep_block,
-                         re.MULTILINE):
-            # Dependencies but no uncommented python
-            dep_block += '\n{ws}{dws}{py}\n'.format(ws=whitespace, dws=dep_whitespace, py=python_replacement_string)
-        else:
-            # Finally: Dependencies with fields and one of them is python
-            dep_block = re.sub(r'-[ \t]*python([ ><=*]+[0-9.*]*)?$', python_replacement_string, dep_block,
-                               flags=re.MULTILINE)
-    final_script = script[:dep_entry.end()] + dep_block
-    if dep_span is not None:
-        final_script += script[dep_span:]
-    script = final_script
-
-# try:
-#     for dep_index, dep_value in enumerate(yaml_script['dependencies']):
-#         if re.match('python([ ><=*]+[0-9.*]*)?$', dep_value):  # Match explicitly 'python' and its formats
-#             yaml_script['dependencies'].pop(dep_index)
-#             break  # Making the assumption there is only one Python entry, also avoids need to enumerate in reverse
-# except KeyError:
-#     # Case of no dependencies key
-#     yaml_script['dependencies'] = []
-# finally:
-#     # Ensure the python version is added in. Even if the code does not need it, we assume the env does
-#     yaml_script['dependencies'].insert(0, python_replacement_string)
+    for dep_index, dep_value in enumerate(yaml_script['dependencies']):
+        if re.match('python([ ><=*]+[0-9.*]*)?$', dep_value):  # Match explicitly 'python' and its formats
+            yaml_script['dependencies'].pop(dep_index)
+            break  # Making the assumption there is only one Python entry, also avoids need to enumerate in reverse
+except (KeyError, TypeError):
+    # Case of no dependencies key, or dependencies: None
+    yaml_script['dependencies'] = []
+finally:
+    # Ensure the python version is added in. Even if the code does not need it, we assume the env does
+    yaml_script['dependencies'].insert(0, python_replacement_string)
 
 # Figure out conda path
 if "CONDA_EXE" in os.environ:
@@ -87,10 +87,9 @@ print("PYTHON VERSION  {}".format(args.python))
 print("CONDA FILE NAME {}".format(args.conda_file))
 print("CONDA PATH      {}".format(conda_path))
 
-# Write to a temp file which will always be cleaned up
-with NamedTemporaryFile() as temp_file:
-    # temp_file.write(yaml.dump(yaml_script).encode())  # Temp files opened as binaries, must encode
-    temp_file.write(script.encode())  # Temp files opened as binaries, must encode
-    temp_file.seek(0)  # Ensure head is moved to start since file never closes (it will delete if closed)
-    temp_file.flush()  # Fix for Windows machines which need more than just seek
-    sp.call("{} env create -n {} -f {}".format(conda_path, args.name, temp_file.name), shell=True)
+# Write to a temp directory which will always be cleaned up
+with temp_cd():
+    temp_file_name = "temp_script.yaml"
+    with open(temp_file_name, 'w') as f:
+        f.write(yaml.dump(yaml_script))
+    sp.call("{} env create -n {} -f {}".format(conda_path, args.name, temp_file_name), shell=True)

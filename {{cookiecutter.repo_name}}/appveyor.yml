@@ -54,3 +54,11 @@ build: false
 
 test_script:
   - pytest -v --cov={{cookiecutter.repo_name}} {{cookiecutter.repo_name}}\\tests
+
+on_success:
+  - codecov
+{% if cookiecutter.dependency_source == 'Dependencies from pip only (no conda)' %}
+  - python setup.py sdist
+{% else %}
+  - conda build devtools/conda-recipe
+{% endif %}

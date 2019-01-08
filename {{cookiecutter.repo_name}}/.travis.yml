@@ -1,7 +1,6 @@
 language: python
 
 # Run jobs on container-based infrastructure, can be overridden per job
-dist: xenial
 
 matrix:
   include:
@@ -52,3 +51,8 @@ notifications:
 
 after_success:
   - codecov
+{% if cookiecutter.dependency_source == 'Dependencies from pip only (no conda)' %}
+  - python setup.py sdist
+{% else %}
+  - conda build devtools/conda-recipe
+{% endif %}

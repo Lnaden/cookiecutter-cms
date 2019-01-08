@@ -204,7 +204,7 @@ package managers, Huzzah!
 ## Conda Build vs. Conda Environments
 
 We recommend creating Conda environments rather than relying on conda build for *testing* purposes, assuming you have 
-opted for Conda as a dependency manager. Earlier versions of this Cookiecutter would conduct testing with by first 
+opted for Conda as a dependency manager. Earlier versions of this Cookiecutter would conduct testing by first 
 bundling the package for distribution through 
 [Conda Build](https://conda.io/docs/user-guide/tasks/build-packages/index.html), and then installing the package 
 locally to execute tests on. This had the advantage of ensuring your package *could* be bundled for distribution and 
@@ -213,10 +213,59 @@ confusing to debug should things go wrong on the build, even before the testing.
 
 The replacement option to this is to pre-create the conda environment and then install your package into it with 
 no dependency resolution for testing. This helps separate out the concepts of **testing** and **deployment** which 
-are separate actions, even though deployment should only come after testing. This should simply and accelerate 
-the testing process, but 
+are separate actions, even though deployment should only come after testing, and you should be ready to do both. 
+This should simplify and accelerate  the testing process, but 
 does mean maintaining two, albeit similar, files since a Conda Environment file has a different YAML syntax than 
 a Conda Build  `meta.yaml` file. We feel this benefits outweigh the costs and have adopted this model.
+
+## Deploying your code
+
+Simply testing your code is insufficient for good coding practices, you *should* be ready to deploy 
+your code as well. Do not be afraid of deployment though; Python deployment over the last several years 
+has been getting easier, especially when there are others to manage your deployment for you. 
+There are several ways to handle this, we will cover a couple here, depending on the conditions 
+which best suit your needs. The list below is neither exhaustive nor exclusive. There are times
+when you may want to build your packages yourself and upload them for developmental purposes. 
+These are meant to serve as guides to help you get started.
+
+Because deployment should be part of your process, but should not get in the way of testing, 
+the Travis and AppVeyor scripts handle the build stage after the test stage in a way which should 
+not interfere with the status of the tests themselves.
+
+
+### Deployment Method 1: Conda Forge
+
+The [Conda Forge](https://conda-forge.org/) community is a great, and the recommended location to deploy your 
+packages. The community is highly active and many scientific developers have been moving here to access not 
+only Conda Forge's deployment tools, but also for easy access to all the other Python packages which have 
+been deployed on the platform. Even though they provide the deployment architecture, you need to still 
+test your program's ability to be packaged through `conda-build`. 
+If you choose either Conda dependency option, additional 
+tests will be added to Travis and/or AppVeyor which *only* package through `conda-build`.
+
+This method relies on the conda `meta.yaml` file.
+
+### Deployment Method 2: Conda through someone else's manager
+
+This option is identical to the Conda Forge method, but relies on a different group's deployment platform
+such as [Bioconda](https://bioconda.github.io/) or [Omnia](http://www.omnia.md/). Each platform has their
+own rules, which may include packaging your program yourself and uploading. Check each platform's 
+instructions and who else deploys to them before choosing this option to ensure its right for you.
+
+This method relies on the conda `meta.yaml` file.
+
+## Deployment Method 3: Upload package to PyPi
+
+The [Python Package Index (PyPi)](https://pypi.org/) is another place to manage your package and have 
+dependencies resolve. This option typically relies on `pip` to create your packages and dependencies 
+must be specified in your `setup.py` file to resolve correctly.
+
+### Deployment Method 4: Manually upload your package to some source 
+
+Sometimes, your package is niche enough, developmental enough, or proprietary enough to warrant manually 
+packaging and uploading your program. This may also apply if you want regular developmental builds which you 
+upload manually to test. In this case, you will want to change your CI scripts to include a build, and 
+optional upload step on completion of tests.
 
 ## Output Skeleton
 
