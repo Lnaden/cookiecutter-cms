@@ -57,8 +57,3 @@ test_script:
 
 on_success:
   - codecov
-{% if cookiecutter.dependency_source == 'Dependencies from pip only (no conda)' %}
-  - python setup.py sdist
-{% else %}
-  - conda build devtools/conda-recipe
-{% endif %}

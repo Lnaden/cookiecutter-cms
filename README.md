@@ -225,12 +225,13 @@ your code as well. Do not be afraid of deployment though; Python deployment over
 has been getting easier, especially when there are others to manage your deployment for you. 
 There are several ways to handle this, we will cover a couple here, depending on the conditions 
 which best suit your needs. The list below is neither exhaustive nor exclusive. There are times
-when you may want to build your packages yourself and upload them for developmental purposes. 
+when you may want to build your packages yourself and upload them for developmental purposes, 
+but we recommend letting others handle (and help you) with deployment.
 These are meant to serve as guides to help you get started.
 
-Because deployment should be part of your process, but should not get in the way of testing, 
-the Travis and AppVeyor scripts handle the build stage after the test stage in a way which should 
-not interfere with the status of the tests themselves.
+Deployment should not get in the way of testing. You could configure the Travis and AppVeyor scripts
+to handle the build stage after the test stage, but this is should only be done by advanced 
+users or those looking to deploy themselves.
 
 
 ### Deployment Method 1: Conda Forge

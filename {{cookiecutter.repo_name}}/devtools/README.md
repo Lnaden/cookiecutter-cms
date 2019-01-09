@@ -17,7 +17,9 @@ Windows testing if you only plan to deploy on specific platforms. These are just
 
 ### Conda Recipe:
 
-This directory contains the files to build and deploy on [Conda](https://conda.io/).
+This directory contains the files to build and deploy on [Conda](https://conda.io/). Although the Cookiecutter 
+does not do anything with this directory at the moment, we leave this here to show an example of how 
+your conda-recipe folder should look, when you decide to start deployment.
 
 * `conda-recipe`: directory containing all the build objects required for Conda. All files in this folder must have their given names
   * `meta.yaml`: The yaml file needed by Conda to construct the build
